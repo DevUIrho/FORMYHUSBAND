@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>For Matcha 🍵</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g0:#f5faf7;--g1:#dff0e5;--g2:#b5d5c0;--g3:#7aab8a;--g4:#4a7c59;--g5:#2e5c40;
+  --pink:#f4d9d9;--peach:#f9ede8;
+  --text:#2e3d35;--mid:#4e6b58;--light:#7a9e88;
+  --white:rgba(255,255,255,0.82);
+  --shadow:0 8px 40px rgba(74,124,89,0.12),0 2px 8px rgba(74,124,89,0.07);
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--g0)}
+body{font-family:'DM Sans',sans-serif;color:var(--text);cursor:none;user-select:none}
+
+/* CURSOR */
+#cursor{position:fixed;width:18px;height:18px;border:1.5px solid var(--g4);border-radius:50%;pointer-events:none;z-index:9999;transition:transform .15s,border-color .15s,background .15s;transform:translate(-50%,-50%);top:0;left:0}
+#cursor.grow{transform:translate(-50%,-50%) scale(2.2);border-color:var(--g3);background:rgba(181,213,192,0.15)}
+
+/* BG CANVAS */
+#bgCanvas{position:fixed;inset:0;z-index:0}
+
+/* APP */
+#app{position:fixed;inset:0;z-index:1;display:flex;align-items:center;justify-content:center}
+
+.scene{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:24px 20px;
+  opacity:0;pointer-events:none;transition:opacity .65s ease;
+}
+.scene.active{opacity:1;pointer-events:all}
+
+/* DOTS */
+#dots{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:10}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--g2);transition:all .4s;cursor:pointer}
+.dot.on{background:var(--g4);transform:scale(1.4)}
+
+/* NAV */
+#prevBtn,#nextBtn{
+  position:fixed;top:50%;z-index:10;transform:translateY(-50%);
+  background:rgba(255,255,255,0.75);border:1px solid rgba(181,213,192,0.5);
+  backdrop-filter:blur(10px);border-radius:50%;width:44px;height:44px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  font-size:18px;color:var(--g4);transition:all .25s;box-shadow:var(--shadow);
+}
+#prevBtn{left:14px}#nextBtn{right:14px}
+#prevBtn:hover,#nextBtn:hover{background:white;transform:translateY(-50%) scale(1.1)}
+.hide{opacity:0!important;pointer-events:none!important}
+
+/* CARD */
+.card{
+  background:var(--white);backdrop-filter:blur(18px);
+  border-radius:28px;padding:40px 48px;
+  box-shadow:var(--shadow);
+  border:1px solid rgba(181,213,192,0.35);
+  max-width:540px;width:100%;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:-40px;right:-40px;
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(181,213,192,0.35),transparent 70%);
+  pointer-events:none;
+}
+
+/* ─── S1 ENVELOPE ─── */
+.s1-label{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300;color:var(--mid);margin-bottom:28px;opacity:.8;text-align:center;letter-spacing:.5px}
+.envelope-wrap{display:flex;flex-direction:column;align-items:center;gap:20px;cursor:pointer}
+.envelope{width:200px;height:140px;position:relative;transition:transform .35s}
+.envelope:hover{transform:translateY(-8px) scale(1.02)}
+.env-body{width:200px;height:140px;background:rgba(255,255,255,0.9);border-radius:8px;box-shadow:var(--shadow);border:1.5px solid rgba(181,213,192,0.55);position:relative;overflow:visible}
+.env-flap{position:absolute;top:0;left:0;right:0;height:0;border-style:solid;border-width:70px 100px 0;border-color:rgba(181,213,192,0.75) transparent transparent;transform-origin:top center;transition:transform .7s cubic-bezier(.23,1,.32,1);z-index:2}
+.env-flap.open{transform:rotateX(180deg)}
+.env-bottom{position:absolute;bottom:0;left:0;right:0;height:0;border-style:solid;border-width:0 100px 70px;border-color:transparent transparent rgba(181,213,192,0.5)}
+.env-left{position:absolute;bottom:0;left:0;width:0;height:0;border-style:solid;border-width:0 0 70px 100px;border-color:transparent transparent transparent rgba(163,210,180,0.4)}
+.env-right{position:absolute;bottom:0;right:0;width:0;height:0;border-style:solid;border-width:0 100px 70px 0;border-color:transparent rgba(163,210,180,0.4) transparent transparent}
+.env-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-28%);font-size:34px;transition:transform .5s,opacity .4s;z-index:1}
+.env-icon.fly{transform:translate(-50%,-200%) scale(1.3);opacity:0}
+.letter-peek{
+  position:absolute;top:-8px;left:50%;transform:translateX(-50%);
+  width:168px;height:0;background:white;border-radius:8px 8px 0 0;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;
+  color:var(--mid);box-shadow:0 -4px 14px rgba(74,124,89,0.1);
+  transition:height .55s .25s,top .55s .25s;
+}
+.letter-peek.show{height:44px;top:-44px}
+.tap-hint{font-size:12px;color:var(--light);letter-spacing:2px;text-transform:uppercase;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* ─── S2 FLOWER ─── */
+#s2{gap:16px}
+.s2-head{text-align:center}
+.s2-head h2{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;color:var(--g4);margin-bottom:6px}
+.s2-head p{font-size:13px;color:var(--light);line-height:1.7}
+#flowerCanvas{border-radius:50%;cursor:pointer;filter:drop-shadow(0 8px 32px rgba(74,124,89,0.18));transition:transform .3s}
+#flowerCanvas:hover{transform:scale(1.04)}
+.petal-count{font-size:12px;color:var(--light);letter-spacing:.5px;text-align:center}
+
+/* ─── S3 TYPEWRITER ─── */
+#twText{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:300;line-height:1.9;color:var(--text);min-height:200px}
+.tw-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--light);margin-bottom:18px;display:block}
+.tw-cursor{display:inline-block;width:2px;height:19px;background:var(--g4);margin-left:2px;animation:blink .75s step-end infinite;vertical-align:middle}
+.tw-next{margin-top:18px;font-size:13px;color:var(--light);opacity:0;transition:opacity .5s;cursor:pointer}
+.tw-next.show{opacity:1}
+.tw-next:hover{color:var(--g4)}
+
+/* ─── S4 JARS ─── */
+#s4{gap:14px}
+.mem-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;color:var(--g4);text-align:center}
+.mem-sub{font-size:13px;color:var(--light);text-align:center}
+.jars{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:500px}
+.jar-btn{
+  background:rgba(255,255,255,0.78);backdrop-filter:blur(12px);
+  border:1.5px solid rgba(181,213,192,0.45);border-radius:18px;
+  padding:16px 18px 12px;display:flex;flex-direction:column;align-items:center;
+  gap:5px;cursor:pointer;transition:all .3s;width:104px;
+  box-shadow:0 4px 20px rgba(74,124,89,0.08);position:relative;
+}
+.jar-btn:hover{transform:translateY(-6px) scale(1.05);box-shadow:0 12px 32px rgba(74,124,89,0.15);border-color:var(--g3)}
+.jar-btn.opened{background:rgba(223,240,229,0.75);border-color:var(--g3)}
+.jar-btn.opened::after{content:'✓';position:absolute;top:6px;right:10px;font-size:10px;color:var(--g4)}
+.jar-icon{font-size:28px;transition:transform .4s}
+.jar-btn:hover .jar-icon{transform:rotate(-12deg) scale(1.2)}
+.jar-label{font-size:11px;color:var(--mid);letter-spacing:.4px;text-align:center}
+
+/* JAR POPUP */
+.overlay{position:fixed;inset:0;background:rgba(46,61,53,0.22);backdrop-filter:blur(3px);z-index:99;opacity:0;pointer-events:none;transition:opacity .4s}
+.overlay.show{opacity:1;pointer-events:all}
+.jar-msg{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.88);
+  background:white;border-radius:26px;padding:36px 44px;
+  max-width:380px;width:90%;box-shadow:0 20px 64px rgba(74,124,89,0.22);
+  border:1.5px solid rgba(181,213,192,0.5);z-index:100;
+  opacity:0;pointer-events:none;transition:all .4s cubic-bezier(.23,1,.32,1);text-align:center;
+}
+.jar-msg.show{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:all}
+.jar-msg-icon{font-size:44px;margin-bottom:10px;display:block}
+.jar-msg h3{font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:300;color:var(--g4);margin-bottom:10px}
+.jar-msg p{font-size:14px;color:var(--mid);line-height:1.85}
+.jar-msg-close{margin-top:20px;font-size:11px;color:var(--light);cursor:pointer;letter-spacing:1.5px;text-transform:uppercase;display:inline-block;transition:color .2s}
+.jar-msg-close:hover{color:var(--g4)}
+
+/* ─── S5 GARDEN ─── */
+#s5{gap:12px}
+.garden-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;color:var(--g4);text-align:center}
+.garden-sub{font-size:13px;color:var(--light);text-align:center}
+#gardenCanvas{border-radius:18px;cursor:crosshair;box-shadow:var(--shadow);border:1.5px solid rgba(181,213,192,0.3);max-width:100%}
+.garden-hint{font-size:12px;color:var(--light);text-align:center;letter-spacing:.4px}
+
+/* ─── S6 FINAL ─── */
+.final-card{text-align:center}
+.miss-tag{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--light);margin-bottom:14px;display:block}
+.miss-big{font-family:'Cormorant Garamond',serif;font-size:52px;font-style:italic;font-weight:300;color:var(--g4);line-height:1;margin-bottom:8px;display:block;animation:hFloat 3.2s ease-in-out infinite}
+@keyframes hFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.miss-sub{font-size:14px;color:var(--light);margin-bottom:24px;line-height:1.7}
+.pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:28px}
+.pill{display:flex;align-items:center;gap:6px;background:rgba(181,213,192,0.22);border:1px solid rgba(181,213,192,0.5);border-radius:100px;padding:7px 16px;font-size:13px;color:var(--mid)}
+.btn-main{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:16px 48px;background:var(--g4);color:white;
+  border:none;border-radius:100px;font-family:'DM Sans',sans-serif;
+  font-size:15px;cursor:pointer;
+  box-shadow:0 8px 32px rgba(74,124,89,0.3);transition:all .3s;
+}
+.btn-main:hover{background:var(--g3);transform:translateY(-3px);box-shadow:0 14px 40px rgba(74,124,89,0.35)}
+.btn-main.yes{background:linear-gradient(135deg,var(--g3),var(--g4));animation:glow 1.8s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 8px 32px rgba(74,124,89,0.3)}50%{box-shadow:0 8px 52px rgba(74,124,89,0.55)}}
+.confetti-msg{margin-top:18px;font-family:'Cormorant Garamond',serif;font-size:21px;font-style:italic;color:var(--g4);opacity:0;transform:translateY(10px);transition:all .7s;line-height:1.6}
+.confetti-msg.show{opacity:1;transform:translateY(0)}
+
+/* CONFETTI */
+.cp{position:fixed;pointer-events:none;z-index:200;animation:cf linear forwards}
+@keyframes cf{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(90vh) rotate(720deg)}}
+
+@media(max-width:520px){
+  .card{padding:28px 22px}
+  .miss-big{font-size:36px}
+  .jars{gap:10px}
+  .jar-btn{width:86px;padding:12px 12px 10px}
+  #gardenCanvas{width:320px;height:200px}
+  #prevBtn{left:6px}#nextBtn{right:6px}
+  #prevBtn,#nextBtn{width:36px;height:36px;font-size:14px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+<div id="cursor"></div>
+
+<div id="app">
+
+  <!-- S1 ENVELOPE -->
+  <div class="scene active" id="s1">
+    <div class="s1-label">something arrived in your name</div>
+    <div class="envelope-wrap" id="envWrap" onclick="openEnvelope()">
+      <div class="envelope" id="env">
+        <div class="env-body">
+          <div class="env-flap" id="envFlap"></div>
+          <div class="env-bottom"></div>
+          <div class="env-left"></div>
+          <div class="env-right"></div>
+          <div class="env-icon" id="envIcon">🍵</div>
+          <div class="letter-peek" id="letterPeek">a quiet apology…</div>
+        </div>
+      </div>
+      <div class="tap-hint" id="tapHint">tap to open</div>
+    </div>
+  </div>
+
+  <!-- S2 FLOWER -->
+  <div class="scene" id="s2">
+    <div class="s2-head">
+      <h2>This bloom is for you, Matcha.</h2>
+      <p>Click each petal — every one holds a word I truly mean.</p>
+    </div>
+    <canvas id="flowerCanvas" width="260" height="260"></canvas>
+    <div class="petal-count" id="petalCount">touch a petal · 0 / 8 revealed</div>
+  </div>
+
+  <!-- S3 TYPEWRITER -->
+  <div class="scene" id="s3">
+    <div class="card" style="max-width:540px">
+      <span class="tw-label">what I want to say</span>
+      <div id="twText"><span class="tw-cursor"></span></div>
+      <div class="tw-next" id="twNext" onclick="goTo(3)">continue reading ↓</div>
+    </div>
+  </div>
+
+  <!-- S4 JARS -->
+  <div class="scene" id="s4">
+    <div class="mem-title">things I kept in little jars</div>
+    <div class="mem-sub">tap each one — I saved them just for you</div>
+    <div class="jars" id="jarsWrap"></div>
+  </div>
+
+  <!-- S5 GARDEN -->
+  <div class="scene" id="s5">
+    <div class="garden-title">a garden of promises</div>
+    <div class="garden-sub">click anywhere to plant what I'll keep</div>
+    <canvas id="gardenCanvas" width="440" height="240"></canvas>
+    <div class="garden-hint" id="gardenHint">🌱 plant at least 5 promises</div>
+  </div>
+
+  <!-- S6 FINAL -->
+  <div class="scene" id="s6">
+    <div class="card final-card">
+      <span class="miss-tag">from the bottom of my heart</span>
+      <span class="miss-big">I miss you.</span>
+      <p class="miss-sub">Every matcha sip. Every bite of flavored chicken.<br>Every quiet moment — I missed you in all of them.</p>
+      <div class="pills">
+        <span class="pill">🍵 your matcha energy</span>
+        <span class="pill">🍗 flavored chicken nights</span>
+        <span class="pill">🌿 your calm presence</span>
+      </div>
+      <button class="btn-main" id="tryBtn" onclick="handleTry()">Can we try again? 🌿</button>
+      <div class="confetti-msg" id="confettiMsg">thank you for reading this. 💚<br><em>I'll do better — I promise.</em></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="overlay" id="overlay" onclick="closeJar()"></div>
+<div class="jar-msg" id="jarMsg">
+  <span class="jar-msg-icon" id="jarIcon"></span>
+  <h3 id="jarTitle"></h3>
+  <p id="jarBody"></p>
+  <div class="jar-msg-close" onclick="closeJar()">close · ✕</div>
+</div>
+
+<button id="prevBtn" class="hide" onclick="goTo(cur-1)">‹</button>
+<button id="nextBtn" onclick="goTo(cur+1)">›</button>
+<div id="dots"></div>
+
+<script>
+// ══ SCENES ══
+const TOTAL=6; let cur=0;
+const scenes=[...document.querySelectorAll('.scene')];
+const dotsEl=document.getElementById('dots');
+const prevBtn=document.getElementById('prevBtn');
+const nextBtn=document.getElementById('nextBtn');
+
+for(let i=0;i<TOTAL;i++){
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' on':'');
+  d.onclick=()=>goTo(i);
+  dotsEl.appendChild(d);
+}
+
+function goTo(n){
+  if(n<0||n>=TOTAL)return;
+  scenes[cur].classList.remove('active');
+  cur=n; scenes[cur].classList.add('active');
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i===cur));
+  prevBtn.classList.toggle('hide',cur===0);
+  nextBtn.classList.toggle('hide',cur===TOTAL-1);
+  onEnter(cur);
+}
+
+function onEnter(n){
+  if(n===1) initFlower();
+  if(n===2) startTypewriter();
+  if(n===4) initGarden();
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown')goTo(cur+1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')goTo(cur-1);
+});
+let tx0=0;
+document.addEventListener('touchstart',e=>tx0=e.changedTouches[0].clientX,{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx0;
+  if(Math.abs(dx)>50){dx<0?goTo(cur+1):goTo(cur-1)}
+});
+
+// ══ CURSOR ══
+const curEl=document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{
+  curEl.style.left=e.clientX+'px';
+  curEl.style.top=e.clientY+'px';
+});
+document.querySelectorAll('button,[onclick],.jar-btn,.dot,.envelope-wrap,#flowerCanvas,#gardenCanvas').forEach(el=>{
+  el.addEventListener('mouseenter',()=>curEl.classList.add('grow'));
+  el.addEventListener('mouseleave',()=>curEl.classList.remove('grow'));
+});
+
+// ══ BG PARTICLES ══
+const bgC=document.getElementById('bgCanvas');
+const bgX=bgC.getContext('2d');
+let W,H,pts=[];
+function resizeBg(){W=bgC.width=innerWidth;H=bgC.height=innerHeight;makePts()}
+function makePts(){
+  pts=[];
+  for(let i=0;i<60;i++)pts.push(newPt());
+}
+function newPt(){
+  return{x:Math.random()*W,y:H+20,r:2+Math.random()*4,
+    vx:(Math.random()-.5)*.25,vy:-.18-Math.random()*.35,
+    alpha:.08+Math.random()*.2,
+    col:['#7aab8a','#b5d5c0','#4a7c59','#c8e6d0'][Math.floor(Math.random()*4)],
+    life:0,max:220+Math.random()*280,spin:Math.random()*Math.PI*2,ds:(Math.random()-.5)*.02}
+}
+function animBg(){
+  bgX.clearRect(0,0,W,H);
+  const g=bgX.createRadialGradient(W*.2,H*.15,0,W*.2,H*.15,W*.65);
+  g.addColorStop(0,'rgba(200,230,208,0.3)');g.addColorStop(1,'rgba(245,250,247,0)');
+  bgX.fillStyle=g;bgX.fillRect(0,0,W,H);
+  pts.forEach((p,i)=>{
+    p.x+=p.vx;p.y+=p.vy;p.life++;p.spin+=p.ds;
+    if(p.life>p.max||p.y<-30){pts[i]=newPt();return}
+    bgX.save();bgX.translate(p.x,p.y);bgX.rotate(p.spin);
+    bgX.globalAlpha=p.alpha*(1-p.life/p.max);
+    bgX.fillStyle=p.col;
+    bgX.beginPath();bgX.ellipse(0,0,p.r,p.r*1.9,0,0,Math.PI*2);
+    bgX.fill();bgX.restore();
+  });
+  requestAnimationFrame(animBg);
+}
+window.addEventListener('resize',resizeBg);
+resizeBg();animBg();
+
+// ══ S1 ENVELOPE ══
+let envDone=false;
+function openEnvelope(){
+  if(envDone)return;envDone=true;
+  document.getElementById('envFlap').classList.add('open');
+  document.getElementById('letterPeek').classList.add('show');
+  document.getElementById('envIcon').classList.add('fly');
+  document.getElementById('tapHint').textContent='💚 opened';
+  setTimeout(()=>goTo(1),1300);
+}
+
+// ══ S2 FLOWER ══
+const fc=document.getElementById('flowerCanvas');
+const fx=fc.getContext('2d');
+const pWords=['Sorry','I mean it','Forgive me','I was wrong','You matter','I miss us','Be patient','Try again'];
+let pState=new Array(8).fill(false),flowInit=false;
+
+function initFlower(){
+  if(flowInit)return;flowInit=true;
+  fc.addEventListener('click',e=>{
+    const r=fc.getBoundingClientRect();
+    const sx=fc.width/r.width,sy=fc.height/r.height;
+    const mx=(e.clientX-r.left)*sx-130,my=(e.clientY-r.top)*sy-130;
+    const ang=Math.atan2(my,mx),dist=Math.sqrt(mx*mx+my*my);
+    if(dist>24&&dist<105){
+      const idx=Math.floor(((ang+Math.PI)/(Math.PI*2)*8)+.5)%8;
+      if(!pState[idx]){pState[idx]=true;drawFlower();updatePC();sparkleAt(e.clientX,e.clientY)}
+    }
+  });
+  drawFlower();
+}
+
+function drawFlower(){
+  fx.clearRect(0,0,260,260);
+  const cx=130,cy=130;
+  for(let i=0;i<8;i++){
+    const a=(i/8)*Math.PI*2-Math.PI/2;
+    const rev=pState[i];
+    fx.save();fx.translate(cx,cy);fx.rotate(a);
+    fx.beginPath();fx.ellipse(0,-58,17,40,0,0,Math.PI*2);
+    fx.fillStyle=rev?'rgba(122,171,138,0.92)':'rgba(223,240,229,0.88)';
+    fx.strokeStyle=rev?'rgba(74,124,89,0.55)':'rgba(181,213,192,0.55)';
+    fx.lineWidth=1.5;fx.fill();fx.stroke();
+    if(rev){
+      fx.save();fx.translate(0,-58);fx.rotate(-a);
+      fx.fillStyle='white';fx.font='bold 9px DM Sans';
+      fx.textAlign='center';fx.textBaseline='middle';
+      fx.fillText(pWords[i],0,0);fx.restore();
+    }
+    fx.restore();
+  }
+  const g=fx.createRadialGradient(cx,cy,0,cx,cy,24);
+  g.addColorStop(0,'#dff0e5');g.addColorStop(1,'#7aab8a');
+  fx.beginPath();fx.arc(cx,cy,24,0,Math.PI*2);fx.fillStyle=g;fx.fill();
+  fx.beginPath();fx.arc(cx,cy,11,0,Math.PI*2);fx.fillStyle='#4a7c59';fx.fill();
+  fx.font='14px serif';fx.textAlign='center';fx.textBaseline='middle';
+  fx.fillText('🍵',cx,cy);
+  if(pState.every(Boolean))setTimeout(()=>goTo(2),700);
+}
+
+function updatePC(){
+  const n=pState.filter(Boolean).length;
+  document.getElementById('petalCount').textContent=`${n} / 8 petals · ${n===8?'✓ all revealed':'keep going'}`;
+}
+
+function sparkleAt(px,py){
+  for(let i=0;i<6;i++){
+    const el=document.createElement('div');
+    el.className='cp';
+    el.textContent=['✿','·','⬤','◆'][Math.floor(Math.random()*4)];
+    el.style.cssText=`left:${px+(-20+Math.random()*40)}px;top:${py}px;font-size:${8+Math.random()*8}px;color:${['#7aab8a','#b5d5c0','#4a7c59'][Math.floor(Math.random()*3)]};animation-duration:.8s;animation-delay:${i*.05}s`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1200);
+  }
+}
+
+// ══ S3 TYPEWRITER ══
+const lines=[
+  "I'm sorry, Kelv",
+  "sorry for causing you too much pain, i know i was wrong",
+  "I hurt you. and i know that i'm fully aware of what i've cause ",
+  "You didn't deserve the distance, or the silence, or whatever shape my mistake took. You deserved more care than I gave you.",
+  "You're someone who notices small things — the right temperature of a drink, the way flavors should balance especially in your favorite matcha. You bring that same attention to the people you love.",
+  "I wasn't careful enough with you. I want to fix that.",
+  "I want to be better for us , i want to be better and fix everything "
+];
+let twLine=0,twChar=0,twInit=false,twInt=null;
+
+function startTypewriter(){
+  if(twInit)return;twInit=true;
+  const box=document.getElementById('twText');
+  twInt=setInterval(()=>{
+    if(twLine>=lines.length){
+      clearInterval(twInt);
+      document.getElementById('twNext').classList.add('show');
+      return;
+    }
+    if(twChar===0){
+      const p=document.createElement('p');
+      p.style.cssText='font-family:"Cormorant Garamond",serif;font-size:18px;font-weight:300;line-height:1.9;margin-bottom:10px;opacity:0;transition:opacity .4s';
+      box.insertBefore(p,box.querySelector('.tw-cursor'));
+      setTimeout(()=>p.style.opacity='1',30);
+    }
+    const p=box.querySelector('p:last-of-type');
+    const line=lines[twLine];
+    if(p&&twChar<line.length){p.textContent=line.slice(0,++twChar)}
+    else{twChar=0;twLine++}
+  },26);
+}
+
+// ══ S4 JARS ══
+const mems=[
+  {icon:'🍵',label:'matcha',title:'Your Matcha Ritual',body:"The way you always want matcha but you want it to be more matcha , i remember it"},
+  {icon:'🍗',label:'chicken',title:'Flavored Chicken Nights',body:"I remember in every chicken you always want the flavoured one"},
+  {icon:'🌙',label:'late nights',title:'Late Night Quiet',body:"Our late nigh talks when everyone asleep and us just yapping about how we love each other "},
+  {icon:'😄',label:'your laugh',title:'That Laugh of Yours',body:"I miss how you laugh about my corny jokes, i miss that kelv"},
+  {icon:'🌿',label:'your calm',title:'Your Steadiness',body:"i love how you always solve everything in calm , sometimes you let your emotions but sometimes you need space to think first"},
+  {icon:'💬',label:'small texts',title:'The Small Texts',body:"I know you love updates even in the smallest thing , and i will give it to you always "},
+];
+
+(function buildJars(){
+  const wrap=document.getElementById('jarsWrap');
+  mems.forEach((m,i)=>{
+    const b=document.createElement('div');
+    b.className='jar-btn';
+    b.innerHTML=`<div class="jar-icon">${m.icon}</div><div class="jar-label">${m.label}</div>`;
+    b.onclick=()=>openJar(i,b);
+    wrap.appendChild(b);
+  });
+})();
+
+function openJar(i,btn){
+  btn.classList.add('opened');
+  document.getElementById('jarIcon').textContent=mems[i].icon;
+  document.getElementById('jarTitle').textContent=mems[i].title;
+  document.getElementById('jarBody').textContent=mems[i].body;
+  document.getElementById('jarMsg').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeJar(){
+  document.getElementById('jarMsg').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+  if(document.querySelectorAll('.jar-btn.opened').length>=4)
+    nextBtn.classList.remove('hide');
+}
+
+// ══ S5 GARDEN ══
+const gc=document.getElementById('gardenCanvas');
+const gx=gc.getContext('2d');
+let gFlowers=[],gInited=false;
+const gPromises=['I\'ll listen more','I\'ll be kinder','I\'ll show up','I\'ll be patient','I won\'t run','I\'ll try harder','I\'ll be honest','I\'ll stay','I\'ll care more','I\'ll be gentler'];
+let gIdx=0;
+
+function initGarden(){
+  if(gInited)return;gInited=true;
+  drawGround();
+  gc.addEventListener('click',e=>{
+    const r=gc.getBoundingClientRect();
+    const sx=gc.width/r.width,sy=gc.height/r.height;
+    const x=(e.clientX-r.left)*sx,y=(e.clientY-r.top)*sy;
+    plantFlower(x,Math.min(y,210));
+  });
+}
+
+function drawGround(){
+  gx.clearRect(0,0,440,240);
+  const sky=gx.createLinearGradient(0,0,0,190);
+  sky.addColorStop(0,'#dff0e5');sky.addColorStop(1,'#f5faf7');
+  gx.fillStyle=sky;gx.fillRect(0,0,440,190);
+  const grd=gx.createLinearGradient(0,190,0,240);
+  grd.addColorStop(0,'#7aab8a');grd.addColorStop(1,'#4a7c59');
+  gx.fillStyle=grd;gx.fillRect(0,190,440,50);
+  for(let i=0;i<9;i++){
+    gx.strokeStyle='rgba(74,124,89,0.25)';gx.lineWidth=1;
+    gx.beginPath();gx.moveTo(i*50,190);
+    gx.bezierCurveTo(i*50+8,198,i*50+32,194,i*50+50,190);gx.stroke();
+  }
+  gFlowers.forEach(f=>drawGF(f));
+}
+
+function plantFlower(x,y){
+  const promise=gPromises[gIdx%gPromises.length];gIdx++;
+  const f={x,y,promise,hue:95+Math.random()*50,s:0,anim:true};
+  gFlowers.push(f);
+  let t=0;
+  const iv=setInterval(()=>{t+=.04;f.s=Math.min(t,1);drawGround();if(t>=1){f.anim=false;clearInterval(iv)}},16);
+  const n=gFlowers.length;
+  document.getElementById('gardenHint').textContent=`🌱 ${n} promise${n!==1?'s':''} planted${n>=5?' — that\'s enough to grow something beautiful 💚':''}`;
+  if(n>=5)setTimeout(()=>goTo(5),1100);
+}
+
+function drawGF(f){
+  const {x,y,hue,s,promise}=f;
+  if(s<=0)return;
+  gx.save();gx.translate(x,y);gx.scale(s,s);
+  gx.strokeStyle=`hsl(${hue},45%,32%)`;gx.lineWidth=2;
+  gx.beginPath();gx.moveTo(0,0);gx.lineTo(0,28);gx.stroke();
+  for(let i=0;i<6;i++){
+    const a=(i/6)*Math.PI*2;
+    gx.beginPath();
+    gx.ellipse(Math.cos(a)*9,Math.sin(a)*9-10,6,10,a,0,Math.PI*2);
+    gx.fillStyle=`hsla(${hue},48%,72%,0.88)`;gx.fill();
+  }
+  gx.beginPath();gx.arc(0,-10,7,0,Math.PI*2);
+  gx.fillStyle=`hsl(${hue},58%,52%)`;gx.fill();
+  gx.restore();
+  if(s>=0.75){
+    gx.save();gx.globalAlpha=s;
+    gx.font='bold 8.5px DM Sans';gx.fillStyle='rgba(46,61,53,0.75)';
+    gx.textAlign='center';gx.textBaseline='bottom';
+    gx.fillText(promise,x,y-26);gx.restore();
+  }
+}
+
+// ══ S6 BUTTON ══
+let tried=false;
+function handleTry(){
+  if(tried)return;tried=true;
+  const btn=document.getElementById('tryBtn');
+  btn.classList.add('yes');btn.innerHTML='💚 Yes, always.';
+  document.getElementById('confettiMsg').classList.add('show');
+  const items=['🍵','🌿','💚','✿','🌱','♡','☘','💐'];
+  for(let i=0;i<50;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');el.className='cp';
+      el.textContent=items[Math.floor(Math.random()*items.length)];
+      el.style.cssText=`left:${Math.random()*100}vw;top:-30px;font-size:${13+Math.random()*14}px;animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*.6}s`;
+      document.body.appendChild(el);setTimeout(()=>el.remove(),3500);
+    },i*55);
+  }
+}
+</script>
+</body>
+</html>
